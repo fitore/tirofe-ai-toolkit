@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Separate Loops Proposal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --human: #4A3FC8;
+    --human-bg: #EEF0FF;
+    --human-border: #4A3FC8;
+    --agent: #C0396B;
+    --agent-bg: #FFF0F5;
+    --agent-border: #C0396B;
+    --async: #D4922A;
+    --guardrail: #1A1A2E;
+    --guardrail-bg: #1A1A2E;
+    --emerging: #2A8C6E;
+    --gold: #D4922A;
+    --surface: #FAFAFA;
+    --ink: #1C1C2E;
+    --ink-light: #5A5A7A;
+    --border: #E0E0EC;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #F5F5FA;
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 3px solid var(--gold);
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 38px;
+    color: var(--human);
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+  .header-left .subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--human);
+    letter-spacing: 0.01em;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 13px;
+  }
+  .header-right .org {
+    font-weight: 700;
+    color: var(--human);
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .header-right .date {
+    color: var(--ink-light);
+    margin-top: 4px;
+  }
+
+  /* ── KEY ── */
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 28px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    font-weight: 600;
+    align-items: center;
+  }
+  .key-label { font-weight: 400; color: var(--ink-light); margin-right: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .key-item { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot-human { background: var(--human); }
+  .dot-agent { background: var(--agent); }
+  .dot-async { background: var(--async); }
+  .dot-guardrail { background: #1A1A2E; }
+  .dot-emerging { background: var(--emerging); }
+
+  /* ── PROBLEM CARD ── */
+  .problem-card {
+    background: white;
+    border: 2px solid var(--human);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .problem-card .card-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+  .problem-card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--human);
+    margin-bottom: 12px;
+  }
+  .problem-card p { color: var(--ink); line-height: 1.65; }
+  .problem-card strong { color: var(--ink); }
+
+  /* ── COMPARISON ── */
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    margin-bottom: 28px;
+    align-items: start;
+  }
+  .compare-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    border: 2px solid;
+  }
+  .compare-card.current { border-color: #D94040; }
+  .compare-card.proposed { border-color: #2A8C6E; }
+  .compare-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .compare-header.bad { color: #D94040; }
+  .compare-header.good { color: #2A8C6E; }
+  .compare-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .compare-list li {
+    font-size: 13.5px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .compare-list li .marker { flex-shrink: 0; margin-top: 1px; font-weight: 700; }
+  .compare-list li .marker.x { color: #D94040; }
+  .compare-list li .marker.check { color: #2A8C6E; }
+  .vs-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-light);
+    padding-top: 80px;
+  }
+
+  /* ── CORE PRINCIPLE ── */
+  .core-principle {
+    background: var(--guardrail-bg);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    color: white;
+  }
+  .core-principle h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+  .core-principle .sub {
+    color: #ccc;
+    font-size: 14px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 700px) { .pillars { grid-template-columns: repeat(2, 1fr); } }
+  .pillar {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+  }
+  .pillar-icon { font-size: 20px; margin-bottom: 8px; display: block; }
+  .pillar h4 { font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 6px; line-height: 1.3; }
+  .pillar p { font-size: 12px; color: #bbb; line-height: 1.5; }
+
+  /* ── SECTION HEADER ── */
+  .section-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--human);
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    margin-top: 36px;
+  }
+  .section-title h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--human);
+  }
+
+  /* ── LOOP PAIR ── */
+  .loop-pair {
+    display: grid;
+    grid-template-columns: 1fr 48px 1fr;
+    gap: 0;
+    margin-bottom: 12px;
+    align-items: stretch;
+  }
+  .loop-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    border-top: 3px solid;
+  }
+  .loop-card.human { border-color: var(--human); }
+  .loop-card.agent { border-color: var(--agent); }
+
+  .loop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .loop-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .loop-label.human { color: var(--human); }
+  .loop-label.agent { color: var(--agent); }
+  .loop-icon { font-size: 16px; }
+  .loop-cadence {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .loop-cadence.human { background: var(--human-bg); color: var(--human); }
+  .loop-cadence.agent { background: var(--agent-bg); color: var(--agent); }
+
+  .loop-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .loop-list li {
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  .loop-list li::before { content: "›"; flex-shrink: 0; font-weight: 700; color: var(--ink-light); margin-top: 0px; }
+
+  /* Async connector */
+  .async-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+  }
+  .async-line { width: 2px; flex: 1; background: var(--async); min-height: 20px; }
+  .async-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--async); flex-shrink: 0; }
+  .async-text {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--async);
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+
+  /* ── FLOW ROW ── */
+  .flow-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .flow-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .flow-pill .play { color: var(--human); font-size: 14px; }
+  .flow-pill .playback { color: var(--agent); font-size: 14px; }
+  .flow-pill .warn { color: var(--gold); font-size: 14px; }
+  .flow-pill strong { font-weight: 700; }
+  .flow-pill .arrow { color: var(--ink-light); margin: 0 2px; }
+
+  /* ── GUARDRAILS ── */
+  .guardrails {
+    background: var(--guardrail-bg);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .guardrails-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    flex-shrink: 0;
+    padding-top: 4px;
+    min-width: 90px;
+  }
+  .guardrail-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    flex: 1;
+  }
+  .g-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: white;
+  }
+  .g-pill .shield { font-size: 13px; }
+
+  /* ── EMERGING ROLES ── */
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 680px) { .roles-grid { grid-template-columns: 1fr 1fr; } }
+  .role-card {
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 18px 14px;
+  }
+  .role-card.emerging { border-color: var(--human); border-width: 1.5px; }
+  .role-card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--human);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .role-card p {
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .role-from {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: var(--human-bg);
+    color: var(--human);
+    padding: 4px 9px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  /* ── ROLE MIGRATION ── */
+  .migration-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .migration-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .migration-row .from { color: var(--ink-light); font-weight: 500; min-width: 130px; }
+  .migration-row .arrow { color: var(--agent); font-weight: 700; flex-shrink: 0; }
+  .migration-row .to { font-weight: 700; color: var(--human); }
+
+  /* ── ROLLOUT ── */
+  .rollout-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 680px) { .rollout-grid { grid-template-columns: 1fr 1fr; } }
+  .rollout-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 14px;
+    position: relative;
+  }
+  .rollout-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--human);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .rollout-card h4 { font-size: 13px; font-weight: 700; color: var(--human); margin-bottom: 6px; }
+  .rollout-card p { font-size: 12px; color: var(--ink); line-height: 1.5; }
+
+  .rollout-arrow {
+    display: none;
+  }
+  @media (min-width: 680px) {
+    .rollout-grid { align-items: center; }
+  }
+
+  /* ── KEY INSIGHT BAR ── */
+  .insight-bar {
+    background: var(--human);
+    border-radius: var(--radius);
+    padding: 18px 24px;
+    color: white;
+  }
+  .insight-bar .insight-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .insight-bar ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .insight-bar li {
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .insight-bar li::before { content: "›"; font-weight: 700; flex-shrink: 0; color: var(--gold); }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0 0;
+  }
+
+  .section-intro {
+    font-size: 13px;
+    color: var(--ink-light);
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Separate Loops<br>Proposal</h1>
+      <div class="subtitle">Decoupled Human &amp; Agent Loops · AI-Augmented Development Lifecycle</div>
+    </div>
+    <div class="header-right">
+      <div class="org">AI Centre of<br>Enablement</div>
+      <div class="date">March 24, 2026</div>
+    </div>
+  </div>
+
+  <!-- KEY -->
+  <div class="key">
+    <span class="key-label">Key</span>
+    <div class="key-item"><div class="dot dot-human"></div><span>Human Loop</span></div>
+    <div class="key-item"><div class="dot dot-agent"></div><span>Agent Loop</span></div>
+    <div class="key-item"><div class="dot dot-async"></div><span>Async Interface</span></div>
+    <div class="key-item"><div class="dot dot-guardrail"></div><span>Guardrail</span></div>
+    <div class="key-item"><div class="dot dot-emerging"></div><span>Emerging Role</span></div>
+  </div>
+
+  <!-- PROBLEM -->
+  <div class="problem-card">
+    <span class="card-icon">⚡</span>
+    <h2>The Problem with Human-in-the-Loop</h2>
+    <p>Agents can generate code faster than humans can review, comprehend, or trust it. Teams with high AI adoption complete 21% more tasks and merge 98% more PRs — but spend 91% more time on review. <strong>We accelerated code generation without equally accelerating verification and trust.</strong> The pull request, designed for human-speed authorship, becomes a traffic jam at agent speed.</p>
+    <p style="margin-top:10px;">The current vision compounds this by placing humans and agents on the same execution path. Every stage requires a human gate before the agent can proceed. <strong>The system moves at human speed, negating most throughput gains.</strong> The fix is not to remove human oversight — it is to decouple the loops. Humans move upstream into constraints and intent; agents execute within them continuously.</p>
+  </div>
+
+  <!-- COMPARISON -->
+  <div class="comparison-grid">
+    <div class="compare-card current">
+      <div class="compare-header bad">✗ Current: Synchronous Gates</div>
+      <ul class="compare-list">
+        <li><span class="marker x">✗</span><span>Human approves each unit of agent work</span></li>
+        <li><span class="marker x">✗</span><span>Agent blocked until human reviews</span></li>
+        <li><span class="marker x">✗</span><span>System speed = human speed</span></li>
+        <li><span class="marker x">✗</span><span>Human becomes the bottleneck</span></li>
+      </ul>
+    </div>
+    <div class="vs-divider">vs</div>
+    <div class="compare-card proposed">
+      <div class="compare-header good">✓ Proposed: Asynchronous Loops</div>
+      <ul class="compare-list">
+        <li><span class="marker check">✓</span><span>Humans define constraints, agents execute within them</span></li>
+        <li><span class="marker check">✓</span><span>Agent runs continuously, unblocked</span></li>
+        <li><span class="marker check">✓</span><span>System speed = agent speed</span></li>
+        <li><span class="marker check">✓</span><span>Humans review patterns, not individual outputs</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CORE PRINCIPLE -->
+  <div class="core-principle">
+    <h2>Core Principle: Constrain, Don't Gate</h2>
+    <p class="sub">Instead of humans approving each unit of agent work, humans define the boundaries agents operate within. The two loops influence each other through asynchronous interfaces.</p>
+    <div class="pillars">
+      <div class="pillar">
+        <span class="pillar-icon">🧱</span>
+        <h4>Platform SDKs &amp; Templates</h4>
+        <p>Agents build on sanctioned building blocks. More deterministic output, smaller error surface.</p>
+      </div>
+      <div class="pillar">
+        <span class="pillar-icon">📜</span>
+        <h4>Policies as Code</h4>
+        <p>Security, quality, and compliance rules encoded and enforced automatically. Agents cannot violate them.</p>
+      </div>
+      <div class="pillar">
+        <span class="pillar-icon">⚡</span>
+        <h4>Thresholds &amp; Circuit Breakers</h4>
+        <p>Agents operate autonomously within tolerances. Breaches trigger alerts, not blocking gates.</p>
+      </div>
+      <div class="pillar">
+        <span class="pillar-icon">📊</span>
+        <h4>Feedback Signals, Not Approvals</h4>
+        <p>Humans review aggregate output and failure patterns. Insights flow back as configuration changes.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 1: PRODUCT ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">1</span>
+    <h3>Product</h3>
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Weekly / Quarterly</span>
+      </div>
+      <ul class="loop-list">
+        <li>Define product vision, strategic priorities, and quarterly themes</li>
+        <li>Review agent-generated backlog rankings; override where business context demands</li>
+        <li>Maintain and refine acceptance criteria templates and scoring weights</li>
+        <li>Conduct stakeholder alignment and organizational trade-off decisions</li>
+        <li>Review agent-drafted user stories in batches; calibrate templates if quality drifts</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Analyse user behaviour data, support tickets, and market signals continuously</li>
+        <li>Score and rank backlog against configurable weighted criteria</li>
+        <li>Draft user stories and acceptance criteria using human-maintained templates</li>
+        <li>Generate competitive intelligence summaries on defined cadence</li>
+        <li>Run A/B test analysis and surface statistically significant results</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> Humans <strong>priority</strong> <span class="arrow">→</span> agents</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents <strong>ranked backlog</strong> <span class="arrow">→</span> humans</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Low-confidence items <strong>→</strong> human exception</div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents cannot promote items to "ready" without completeness check</div>
+      <div class="g-pill"><span class="shield">🛡</span> Scoring weight changes require human approval &amp; version control</div>
+      <div class="g-pill"><span class="shield">🛡</span> Agent-generated stories tagged &amp; subject to periodic batch audit</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 2: ENGINEERING ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">2</span>
+    <h3>Engineering</h3>
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Weekly / Sprint</span>
+      </div>
+      <ul class="loop-list">
+        <li>Build and maintain the <strong>Platform SDK</strong> — core libraries, design system, shared patterns (AI-assisted, not agentic)</li>
+        <li>Ensure all architectural decisions, patterns, and context live in the repo as versioned artifacts — knowledge in Slack or Confluence is invisible to agents</li>
+        <li>Analyse agent output quality: defect rates, test coverage, code quality indicators</li>
+        <li>Review production incidents; identify root causes in agent behaviour or SDK gaps</li>
+        <li>Tune agent configuration: prompt templates, code generation rules, thresholds</li>
+        <li>Process SDK change requests from agents — evaluate, prioritize, implement</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Pick up prioritized tickets from the backlog</li>
+        <li>Design a solution within Platform SDK constraints</li>
+        <li>Implement → test → check against concrete criteria → iterate until pass (<strong>the execution loop</strong>: act, verify, feed back, repeat)</li>
+        <li>Run SAST, linting, and code quality scans automatically; query live observability (logs, traces) to reproduce and verify runtime behaviour</li>
+        <li>Prepare releases and update developer/agent documentation in-repo as versioned artifacts</li>
+        <li><strong>Garbage collection:</strong> background agents scan on cadence for stale docs, architectural drift, and constraint violations — open small auto-mergeable remediation PRs</li>
+        <li>If blocked by SDK limitation, create an <strong>SDK change request</strong> ticket</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> The <strong>Platform SDK</strong> is the primary interface — constrains what agents can do and how</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents produce <strong>quality metrics &amp; failure logs</strong> <span class="arrow">→</span> humans identify systemic issues</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Circuit breaker: N failures → ticket routed to human loop with full context</div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents cannot modify Platform SDK — only application code on top of it</div>
+      <div class="g-pill"><span class="shield">🛡</span> All agent code must pass automated pipeline (SAST, tests, lint) to merge</div>
+      <div class="g-pill"><span class="shield">🛡</span> Releases go through automated validation gates</div>
+      <div class="g-pill"><span class="shield">🛡</span> Circuit breaker at configurable failure threshold</div>
+      <div class="g-pill"><span class="shield">🛡</span> Agent commits must include structured rationale — execution plans and ADRs are compliance-auditable artifacts</div>
+      <div class="g-pill"><span class="shield">🛡</span> Agent instruction files kept concise (&lt;100 lines as table of contents); full context lives in structured docs/ — overloaded context degrades output quality</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 3: QA ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">3</span>
+    <h3>QA</h3>
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Weekly / Sprint</span>
+      </div>
+      <ul class="loop-list">
+        <li>Define and maintain the <strong>test strategy</strong> — testing types per risk tier, coverage thresholds, perf baselines</li>
+        <li>Review quality dashboards: defect escape rates, flaky test trends, coverage gaps</li>
+        <li>Investigate edge cases agents consistently miss; feed back as new test patterns</li>
+        <li>Maintain exploratory testing checklists for high-risk areas</li>
+        <li>Calibrate test generation templates and classification rules</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Generate test scripts with 1:1 traceability to acceptance criteria</li>
+        <li>Execute full regression suites, integration tests, and performance benchmarks</li>
+        <li>Perform fuzz testing and boundary analysis on new endpoints</li>
+        <li>Generate coverage reports and gap analysis against acceptance criteria</li>
+        <li>Auto-classify failures: code defect, test defect, or environment issue</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> Humans define <strong>risk tiers &amp; coverage thresholds</strong> <span class="arrow">→</span> agents generate against them</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents produce <strong>coverage reports &amp; failure classifications</strong> <span class="arrow">→</span> humans calibrate templates</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Systematic edge-case misses → routed to human exploratory testing</div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents cannot mark a story as tested without coverage threshold met</div>
+      <div class="g-pill"><span class="shield">🛡</span> High-risk tier tests require human sign-off before release</div>
+      <div class="g-pill"><span class="shield">🛡</span> Test classification rules (code vs test vs environment defect) version-controlled and human-approved</div>
+      <div class="g-pill"><span class="shield">🛡</span> Every auto-closed test failure has logged rationale — auditable trace</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 4: SECURITY ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">4</span>
+    <h3>Security</h3>
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Weekly / On-demand</span>
+      </div>
+      <ul class="loop-list">
+        <li>Define and maintain <strong>security policies</strong> — allowed, blocked, exception-required</li>
+        <li>Conduct architecture-level threat modelling for new systems</li>
+        <li>Lead incident response and forensic analysis</li>
+        <li>Batch-review agent triage decisions; validate false positive patterns</li>
+        <li>Interpret regulatory changes → update policy-as-code rules</li>
+        <li>Approve security exceptions (time-boxed, tracked, compensating controls)</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Run continuous SAST and dependency vulnerability scanning</li>
+        <li>Enforce security policies as code in CI/CD — block violating builds</li>
+        <li>Automated threat model analysis on new PRs (data flows, endpoints, auth)</li>
+        <li>Monitor runtime signals: anomalous traffic, credential exposure, config drift</li>
+        <li>Generate compliance evidence artifacts (audit logs, control attestations) — structured for regulatory traceability</li>
+        <li>Triage findings: auto-close known false positives with logged rationale</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> Humans publish <strong>policies as code &amp; threat model baselines</strong> <span class="arrow">→</span> agents enforce continuously</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents surface <strong>vuln reports &amp; triage summaries</strong> <span class="arrow">→</span> humans review periodically</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Novel vulnerability types or ambiguous risk → routed to <strong>human review</strong></div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents cannot grant security exceptions — humans only</div>
+      <div class="g-pill"><span class="shield">🛡</span> Critical/high vulns block promotion; agents cannot override</div>
+      <div class="g-pill"><span class="shield">🛡</span> Policy changes version-controlled, require human approval</div>
+      <div class="g-pill"><span class="shield">🛡</span> Every auto-closed finding has auditable logged rationale</div>
+      <div class="g-pill"><span class="shield">🛡</span> Pen testing remains human-led</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 5: DEVOPS ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">5</span>
+    <h3>DevOps</h3>
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Monthly / On-demand</span>
+      </div>
+      <ul class="loop-list">
+        <li>Define <strong>infrastructure architecture patterns &amp; templates</strong> — sanctioned deployment methods</li>
+        <li>Set capacity plans, cost budgets, and SLA targets</li>
+        <li>Design disaster recovery and business continuity strategies</li>
+        <li>Review incident post-mortems; identify monitoring and remediation gaps</li>
+        <li>Manage vendor relationships and evaluate new tooling</li>
+        <li>Update runbooks and remediation playbooks based on incident trends</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Monitor infrastructure health, app performance, and cost metrics</li>
+        <li>Execute deployments via automated pipelines (blue/green, canary) per runbooks</li>
+        <li>Auto-scale infrastructure within defined boundaries based on load</li>
+        <li>Detect &amp; respond to incidents: correlate alerts, identify root cause, auto-remediate known patterns</li>
+        <li>Manage IaC — apply drift corrections, update configs per policy</li>
+        <li>Provision environments for new services using sanctioned templates</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> Humans define <strong>infra templates &amp; runbooks</strong> <span class="arrow">→</span> agents execute within them</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents surface <strong>incident patterns &amp; cost anomalies</strong> <span class="arrow">→</span> humans update playbooks</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Novel incident types or budget breach → escalated to human loop</div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents can only deploy via sanctioned pipeline templates — no ad-hoc execution</div>
+      <div class="g-pill"><span class="shield">🛡</span> Production promotion requires automated validation gate; agents cannot bypass</div>
+      <div class="g-pill"><span class="shield">🛡</span> Cost and capacity changes above threshold require human approval</div>
+      <div class="g-pill"><span class="shield">🛡</span> All agent-applied IaC changes logged with rationale — full audit trail</div>
+      <div class="g-pill"><span class="shield">🛡</span> Disaster recovery and business continuity procedures remain human-authored and human-tested</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ DOMAIN 6: DESIGN ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title">
+    <span class="section-number">6</span>
+    <h3>Design</h3>
+  </div>
+
+  <div style="background: var(--human-bg); border: 1px solid var(--human-border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; font-size: 13px; color: var(--ink); line-height: 1.6;">
+    <strong>The design system is the UX harness.</strong> A versioned component library with tokens, interaction patterns, and accessibility rules is the Platform SDK equivalent for the front end. Without it, agents generating UI produce inconsistent interfaces that are expensive to fix and impossible to audit. Designers maintain the constraint layer; agents build within it.
+  </div>
+
+  <div class="loop-pair">
+    <div class="loop-card human">
+      <div class="loop-header">
+        <div class="loop-label human"><span class="loop-icon">🔄</span> Human Loop</div>
+        <span class="loop-cadence human">Weekly / Sprint</span>
+      </div>
+      <ul class="loop-list">
+        <li>Define and maintain the <strong>design system</strong> — tokens, components, interaction patterns, and accessibility standards; the constraint layer for all agent-generated UI</li>
+        <li>Conduct user research, usability testing, and journey mapping; feed findings into Product human loop as weighted scoring inputs</li>
+        <li>Define information architecture and interaction principles for new product areas</li>
+        <li>Review agent-generated UI for brand consistency, accessibility compliance, and interaction quality — review batches, not individual outputs</li>
+        <li>Evaluate agent-surfaced design system gap requests; approve additions and version the system</li>
+        <li>Maintain component generation templates and quality thresholds; calibrate when agent output drifts</li>
+      </ul>
+    </div>
+    <div class="async-connector">
+      <div class="async-line"></div>
+      <div class="async-dot"></div>
+      <div class="async-text">Async</div>
+      <div class="async-dot"></div>
+      <div class="async-line"></div>
+    </div>
+    <div class="loop-card agent">
+      <div class="loop-header">
+        <div class="loop-label agent"><span class="loop-icon">⚡</span> Agent Loop</div>
+        <span class="loop-cadence agent">Continuous</span>
+      </div>
+      <ul class="loop-list">
+        <li>Generate UI implementations using design system components and tokens — no ad-hoc patterns</li>
+        <li>Run accessibility scans (WCAG compliance) on all generated interfaces; block promotion on failures</li>
+        <li>Apply design tokens consistently across generated surfaces; flag deviations</li>
+        <li>Generate component usage documentation and design-to-implementation traceability artifacts</li>
+        <li>Detect design system coverage gaps — surface as <strong>design system change request</strong> tickets when a required pattern is absent</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="flow-pill"><span class="play">▶</span> Humans publish <strong>versioned design system</strong> <span class="arrow">→</span> agents build within it</div>
+    <div class="flow-pill"><span class="playback">◀</span> Agents surface <strong>design system gap requests &amp; accessibility reports</strong> <span class="arrow">→</span> humans evaluate and extend</div>
+    <div class="flow-pill"><span class="warn">⚠</span> Novel interaction patterns or brand judgment → human loop only</div>
+  </div>
+
+  <div class="guardrails">
+    <div class="guardrails-label">Guardrails</div>
+    <div class="guardrail-pills">
+      <div class="g-pill"><span class="shield">🛡</span> Agents cannot introduce UI patterns outside the design system — must raise a change request</div>
+      <div class="g-pill"><span class="shield">🛡</span> Accessibility failures (WCAG AA minimum) block promotion; agents cannot override</div>
+      <div class="g-pill"><span class="shield">🛡</span> Design system versions are controlled and human-approved — agents consume, never modify</div>
+      <div class="g-pill"><span class="shield">🛡</span> Agent-generated UI tagged and subject to periodic design review batch</div>
+      <div class="g-pill"><span class="shield">🛡</span> User research and journey findings remain human-authored inputs — not agent-synthesised without validation</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ EMERGING ROLES ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title" style="margin-top: 36px;">
+    <h3 style="font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--human);">Emerging Roles</h3>
+  </div>
+
+  <div class="roles-grid">
+    <div class="role-card emerging">
+      <h4>Platform SDK Engineer</h4>
+      <p>Build and maintain the core libraries, patterns, and architectural building blocks that agents use. Write the "rules of the game" for agent-generated code.</p>
+      <span class="role-from">← Senior/Staff Developers, Architects</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>Agent Loop Engineer</h4>
+      <p>Configure, monitor, and optimize agent loops across all domains. Tune prompts, thresholds, scoring weights, and failure policies. Bridge human intent and agent behaviour.</p>
+      <span class="role-from">← Senior Devs, DevOps, QA Leads</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>Agent Quality Analyst</h4>
+      <p>Monitor agent output quality across all domains. Analyse defect patterns, coverage gaps, triage accuracy, and failure modes. Feed findings back as config changes.</p>
+      <span class="role-from">← QA Engineers, Data Analysts, BAs</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>AI Policy Engineer</h4>
+      <p>Translate security, compliance, and governance requirements into machine-enforceable rules (policy as code). Bridge regulatory language and automated enforcement.</p>
+      <span class="role-from">← Security Eng, Compliance, Risk</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>Product Strategist</h4>
+      <p>Focus on vision, stakeholder alignment, and strategic trade-offs. Operational product work (stories, grooming, scoring) handled by agents. Shift to higher-order judgment.</p>
+      <span class="role-from">← Product Managers, Business Analysts</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>Design Systems Architect</h4>
+      <p>Build and govern the versioned design system — the constraint layer for agent-generated UI. Define tokens, components, interaction patterns, and accessibility standards. Write the "rules of the game" for agent-generated interfaces.</p>
+      <span class="role-from">← Senior UX/UI Designers, Design Leads</span>
+    </div>
+    <div class="role-card emerging">
+      <h4>Incident Strategist</h4>
+      <p>Focus on novel incidents, post-mortem analysis, and updating automated remediation playbooks. Routine incident response handled by agents.</p>
+      <span class="role-from">← SREs, Ops Engineers, DevOps</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════ ROLE MIGRATION ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title" style="margin-top: 36px;">
+    <h3 style="font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--human);">Role Migration Map</h3>
+  </div>
+
+  <div class="migration-grid">
+    <div class="migration-row"><span class="from">Junior Developer</span><span class="arrow">→</span><span class="to">Agent Loop Engineer</span></div>
+    <div class="migration-row"><span class="from">Senior Developer</span><span class="arrow">→</span><span class="to">Platform SDK Eng + Agent Loop Eng</span></div>
+    <div class="migration-row"><span class="from">Software Architect</span><span class="arrow">→</span><span class="to">Platform SDK Engineer</span></div>
+    <div class="migration-row"><span class="from">Product Manager</span><span class="arrow">→</span><span class="to">Product Strategist</span></div>
+    <div class="migration-row"><span class="from">Business Analyst</span><span class="arrow">→</span><span class="to">Product Strategist / Agent Quality Analyst</span></div>
+    <div class="migration-row"><span class="from">QA Engineer</span><span class="arrow">→</span><span class="to">Agent Quality Analyst</span></div>
+    <div class="migration-row"><span class="from">Security Engineer</span><span class="arrow">→</span><span class="to">AI Policy Engineer</span></div>
+    <div class="migration-row"><span class="from">DevOps Engineer</span><span class="arrow">→</span><span class="to">Agent Loop Eng + Incident Strategist</span></div>
+    <div class="migration-row"><span class="from">SRE</span><span class="arrow">→</span><span class="to">Incident Strategist</span></div>
+    <div class="migration-row"><span class="from">Change Manager</span><span class="arrow">→</span><span class="to">Remains (production release approval)</span></div>
+    <div class="migration-row"><span class="from">UX Designer</span><span class="arrow">→</span><span class="to">Design Systems Architect + UX Strategist</span></div>
+    <div class="migration-row"><span class="from">UI Designer</span><span class="arrow">→</span><span class="to">Design system contributor / agent output reviewer</span></div>
+    <div class="migration-row"><span class="from">UX Researcher</span><span class="arrow">→</span><span class="to">UX Strategist (feeds Product human loop)</span></div>
+  </div>
+
+  <!-- ════════════════════════════ ROLLOUT SEQUENCE ════════════════════════════ -->
+  <hr class="section-divider">
+  <div class="section-title" style="margin-top: 36px;">
+    <h3 style="font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--human);">Rollout Sequence</h3>
+  </div>
+
+  <div class="rollout-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 10px;">
+    <div class="rollout-card">
+      <div class="rollout-num">1</div>
+      <h4>Engineering + Design</h4>
+      <p>Build Platform SDK and design system for one product area simultaneously. Agents build features and UI within both constraint layers. Measure output quality vs human-authored.</p>
+    </div>
+    <div class="rollout-card">
+      <div class="rollout-num">2</div>
+      <h4>QA</h4>
+      <p>QA agents generate and run tests on agent-produced code. Human loop monitors quality metrics and accessibility compliance.</p>
+    </div>
+    <div class="rollout-card">
+      <div class="rollout-num">3</div>
+      <h4>DevOps</h4>
+      <p>Standardize infra templates. Agents handle deployments and routine incidents within playbooks.</p>
+    </div>
+  </div>
+  <div class="rollout-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 20px;">
+    <div class="rollout-card">
+      <div class="rollout-num">4</div>
+      <h4>Security</h4>
+      <p>Encode security policies as code. Agents scan and triage continuously. Humans review in batches.</p>
+    </div>
+    <div class="rollout-card">
+      <div class="rollout-num">5</div>
+      <h4>Product</h4>
+      <p>Introduce agent-assisted backlog management and story generation once execution loops are stable.</p>
+    </div>
+  </div>
+
+  <div class="insight-bar">
+    <div class="insight-label">Key Insights</div>
+    <ul>
+      <li>Humans set constraints, agents execute within them — loops influence each other asynchronously</li>
+      <li>Agents run at agent speed; humans review patterns, not individual outputs</li>
+      <li>In regulated environments, agent reasoning is an audit artifact — commit rationale, ADRs, and execution plans are compliance evidence, not developer convenience</li>
+      <li>Knowledge not in the repo does not exist for the agent — move all governing context into versioned, repo-local artifacts</li>
+      <li>These loops are bets with expiration dates. Build the thinnest layer between human intent and shipped software. Treat every layer as disposable — know when to rip it out as model capability increases</li>
+      <li>Over time, agent loops become more capable and human loops become more strategic</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

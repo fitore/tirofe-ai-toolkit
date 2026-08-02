@@ -16,11 +16,7 @@ const toolInputSchema = {
 };
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const bundledUiPath = path.resolve(serverDir, "../../ui/mcp-app.html");
-export function createReverseMortgageServer() {
-    const server = new McpServer({
-        name: serverName,
-        version: "0.1.0",
-    });
+export function registerReverseMortgageApp(server) {
     registerAppTool(server, toolName, {
         title: "Check Reverse Mortgage Eligibility",
         description: "Returns illustrative, non-underwriting reverse mortgage eligibility and estimate JSON for a personal local demo.",
@@ -54,5 +50,12 @@ export function createReverseMortgageServer() {
             ],
         };
     });
+}
+export function createReverseMortgageServer() {
+    const server = new McpServer({
+        name: serverName,
+        version: "0.1.0",
+    });
+    registerReverseMortgageApp(server);
     return server;
 }

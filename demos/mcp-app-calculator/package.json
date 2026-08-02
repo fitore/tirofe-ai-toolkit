@@ -1,0 +1,32 @@
+{
+  "name": "reverse-mortgage-eligibility-mcp-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal demo MCP App for illustrative reverse mortgage eligibility checks.",
+  "scripts": {
+    "build": "pnpm build:ui && pnpm build:server",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:ui": "INPUT=mcp-app.html vite build",
+    "check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
+    "test": "vitest run",
+    "serve": "node dist/server/server/stdio.js",
+    "dev:stdio": "tsx src/server/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

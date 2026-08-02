@@ -21,12 +21,7 @@ const toolInputSchema = {
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const bundledUiPath = path.resolve(serverDir, "../../ui/mcp-app.html");
 
-export function createReverseMortgageServer(): McpServer {
-  const server = new McpServer({
-    name: serverName,
-    version: "0.1.0",
-  });
-
+export function registerReverseMortgageApp(server: McpServer): void {
   registerAppTool(
     server,
     toolName,
@@ -75,6 +70,15 @@ export function createReverseMortgageServer(): McpServer {
       };
     },
   );
+}
+
+export function createReverseMortgageServer(): McpServer {
+  const server = new McpServer({
+    name: serverName,
+    version: "0.1.0",
+  });
+
+  registerReverseMortgageApp(server);
 
   return server;
 }

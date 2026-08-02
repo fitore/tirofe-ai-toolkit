@@ -34,6 +34,12 @@ Add this block to `claude_desktop_config.json`:
 
 After saving the config, restart Claude Desktop so it reloads local MCP servers. Then ask Claude to check reverse mortgage eligibility or to open the app UI.
 
+## HTTP Transport (Vercel)
+
+`api/mcp.ts` wraps the same tool/resource registration used by the stdio server (`registerReverseMortgageApp` in `src/server/appServer.ts`) in an HTTP-speaking handler via [`mcp-handler`](https://www.npmjs.com/package/mcp-handler), so it can run as a Vercel serverless function without a framework. Claude Desktop keeps using the stdio entry point unchanged; this is a second, additive transport for hosts that need HTTP (e.g. ChatGPT).
+
+Status: wired but not yet verified end-to-end locally or deployed. A local Streamable HTTP round-trip (initialize -> notifications/initialized -> tool call) surfaced an unresolved 500 response on the second request during manual debugging; needs a follow-up pass before relying on it. Deploying to Vercel and registering the ChatGPT connector (runbook steps 3-6) hasn't been done yet either.
+
 ## ChatGPT
 
 ChatGPT setup is distinct from Claude Desktop's local JSON config. Current OpenAI documentation says ChatGPT custom MCP apps are configured from ChatGPT web settings, require developer mode access, and need an endpoint for the MCP server.
@@ -47,11 +53,11 @@ High-level setup path as of August 2, 2026:
 5. Click `Scan Tools`, wait for the scan to complete, then click `Create`.
 6. Test from a new ChatGPT web chat by selecting the draft app from the tools menu or referring to it in the prompt.
 
-V1 does not complete ChatGPT runtime testing because remote deployment/tunnel work was intentionally deferred. ChatGPT cannot connect directly to this local stdio server; later testing requires a remote Streamable HTTP endpoint or a secure tunnel.
+ChatGPT runtime testing is still outstanding: the HTTP handler above exists but hasn't been deployed or pointed at from a ChatGPT connector yet. ChatGPT cannot connect directly to the local stdio server; it needs the Vercel-hosted `/api/mcp` endpoint (or a tunnel to it).
 
 ## Post-Demo Persistence
 
-If the recipient needs to use this after the meeting, local config distribution is not enough. Add a remote or tunneled Streamable HTTP transport and revisit hosting, access control, and setup instructions.
+If the recipient needs to use this after the meeting, local config distribution is not enough. Deploy `api/mcp.ts` to Vercel (or tunnel to it) and revisit hosting, access control, and setup instructions.
 
 ## Manual Test Checklist
 
